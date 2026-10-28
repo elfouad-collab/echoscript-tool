@@ -87,6 +87,34 @@ fileInput.addEventListener('change', () => {
     : 'Waiting for file…';
 });
 
+async function decodeToMono16k(file) {
+  statusEl.textContent = 'Decoding audio…';
+  const arrayBuffer = await file.arrayBuffer();
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+  // mix to mono
+  const numCh = audioBuffer.numberOfChannels;
+  const length = audioBuffer.length;
+  const mono = new Float32Array(length);
+  for (let c = 0; c < numCh; c++) {
+    const data = audioBuffer.getChannelData(c);
+    for (let i = 0; i < length; i++) mono[i] += data[i] / numCh;
+  }
+  // resample to 16kHz if needed
+  if (audioBuffer.sampleRate === 16000) return mono;
+  const ratio = 16000 / audioBuffer.sampleRate;
+  const newLen = Math.floor(length * ratio);
+  const out = new Float32Array(newLen);
+  for (let i = 0; i < newLen; i++) {
+    const src = i / ratio;
+    const i0 = Math.floor(src);
+    const i1 = Math.min(i0 + 1, length - 1);
+    const frac = src - i0;
+    out[i] = mono[i0] * (1 - frac) + mono[i1] * frac;
+  }
+  return out;
+}
+
 goBtn.addEventListener('click', async () => {
   const file = fileInput.files[0];
   if (!file) return;
@@ -96,24 +124,25 @@ goBtn.addEventListener('click', async () => {
   copyBtn.style.display = 'none';
 
   try {
+    const pcm = await decodeToMono16k(file);
+    const seconds = (pcm.length / 16000).toFixed(1);
+    statusEl.textContent = `Audio decoded (${seconds}s). Loading model…`;
+
     if (!transcriber) {
-      statusEl.textContent = 'Loading Whisper model (first time only, ~50 MB)…';
       transcriber = await pipeline(
         'automatic-speech-recognition',
         'Xenova/whisper-tiny.en'
       );
     }
 
-    statusEl.textContent = 'Reading audio…';
-    const arrayBuffer = await file.arrayBuffer();
-
     statusEl.textContent = 'Transcribing…';
-    const result = await transcriber(arrayBuffer, {
+    const result = await transcriber(pcm, {
       chunk_length_s: 30,
-      stride_length_s: 5
+      stride_length_s: 5,
+      return_timestamps: false
     });
 
-    outputEl.textContent = result.text || '(no speech detected)';
+    outputEl.textContent = result.text?.trim() || '(no speech detected)';
     copyBtn.style.display = 'inline-block';
     statusEl.textContent = 'Done ✅';
   } catch (err) {
