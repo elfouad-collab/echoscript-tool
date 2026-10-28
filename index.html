@@ -5,112 +5,203 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EchoScript Lab — Audio & Video Transcription</title>
 <style>
+  :root {
+    --bg: #0b1220;
+    --panel: #131c2e;
+    --panel-2: #1a2540;
+    --accent: #38bdf8;
+    --accent-2: #818cf8;
+    --text: #e6edf6;
+    --muted: #94a3b8;
+    --border: #24304a;
+  }
+  * { box-sizing: border-box; }
   body {
-    font-family: system-ui, -apple-system, sans-serif;
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 24px;
-    background: #0f172a;
-    color: #e2e8f0;
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: radial-gradient(circle at 20% 0%, #16213e 0%, var(--bg) 55%);
+    color: var(--text);
+    min-height: 100vh;
   }
-  h1 { color: #38bdf8; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 20px 60px; }
+  header { text-align: center; margin-bottom: 32px; }
+  h1 {
+    font-size: 2.2rem;
+    margin: 0 0 8px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: -0.5px;
+  }
+  header p { color: var(--muted); margin: 0; font-size: 1rem; }
   .card {
-    background: #1e293b;
-    border-radius: 12px;
-    padding: 20px;
-    margin-top: 16px;
+    background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
   }
-  input[type=file] {
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  select, input[type=file] {
     width: 100%;
-    padding: 12px;
-    background: #0f172a;
-    border: 1px dashed #38bdf8;
-    border-radius: 8px;
-    color: #e2e8f0;
+    padding: 12px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 0.95rem;
+    margin-bottom: 14px;
   }
+  input[type=file] { border-style: dashed; }
+  input[type=file]:hover { border-color: var(--accent); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   button {
-    margin-top: 12px;
-    padding: 10px 20px;
-    background: #38bdf8;
-    color: #0f172a;
+    padding: 12px 22px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    color: #0b1220;
     border: none;
-    border-radius: 8px;
-    font-weight: bold;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.95rem;
     cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
   }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  #status { margin-top: 12px; color: #94a3b8; }
+  button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(56,189,248,0.35); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.secondary {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+  }
+  .status { margin-top: 14px; color: var(--muted); font-size: 0.9rem; min-height: 1.2em; }
+  .progress-track {
+    height: 8px;
+    background: var(--bg);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 14px;
+    display: none;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width 0.3s ease;
+  }
   #output {
     white-space: pre-wrap;
-    background: #0f172a;
-    padding: 16px;
-    border-radius: 8px;
-    margin-top: 12px;
-    min-height: 80px;
-    font-size: 15px;
-    line-height: 1.5;
+    line-height: 1.65;
+    font-size: 1rem;
+    min-height: 120px;
+    color: var(--text);
   }
+  .actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .hidden { display: none !important; }
+  footer { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 30px; }
 </style>
 </head>
 <body>
+<div class="wrap">
+  <header>
+    <h1>EchoScript Lab</h1>
+    <p>Transcribe audio & video in your browser — private, no uploads.</p>
+  </header>
 
-<h1>EchoScript Lab</h1>
-<p>Transcribe audio & video files directly in your browser. No upload, no server — 100% private.</p>
+  <div class="card">
+    <label for="file">Choose an audio or video file</label>
+    <input type="file" id="file" accept="audio/*,video/*">
 
-<div class="card">
-  <input type="file" id="file" accept="audio/*,video/*">
-  <button id="go" disabled>Transcribe</button>
-  <div id="status">Waiting for file…</div>
-</div>
+    <div class="row">
+      <div>
+        <label for="model">Model</label>
+        <select id="model">
+          <option value="Xenova/whisper-tiny.en">Tiny (English, fast)</option>
+          <option value="Xenova/whisper-tiny">Tiny (Multilingual, fast)</option>
+          <option value="Xenova/whisper-base.en">Base (English, balanced)</option>
+          <option value="Xenova/whisper-base">Base (Multilingual, balanced)</option>
+        </select>
+      </div>
+      <div>
+        <label for="language">Language</label>
+        <select id="language">
+          <option value="auto">Auto-detect</option>
+          <option value="en">English</option>
+          <option value="ar">Arabic</option>
+          <option value="fr">French</option>
+          <option value="es">Spanish</option>
+          <option value="de">German</option>
+          <option value="tr">Turkish</option>
+        </select>
+      </div>
+    </div>
 
-<div class="card">
-  <strong>Transcript</strong>
-  <div id="output"></div>
-  <button id="copy" style="display:none;">Copy transcript</button>
+    <button id="go" disabled>Transcribe</button>
+    <div class="status" id="status">Waiting for file…</div>
+    <div class="progress-track" id="track"><div class="progress-fill" id="fill"></div></div>
+  </div>
+
+  <div class="card">
+    <label>Transcript</label>
+    <div id="output">Your transcript will appear here.</div>
+    <div class="actions hidden" id="actions">
+      <button id="copy" class="secondary">Copy</button>
+      <button id="download" class="secondary">Download .txt</button>
+    </div>
+  </div>
+
+  <footer>EchoScript Lab · Runs locally with Transformers.js · Powered by Whisper</footer>
 </div>
 
 <script type="module">
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+env.allowLocalModels = false;
 
 const fileInput = document.getElementById('file');
-const goBtn     = document.getElementById('go');
-const statusEl  = document.getElementById('status');
-const outputEl  = document.getElementById('output');
-const copyBtn   = document.getElementById('copy');
+const goBtn = document.getElementById('go');
+const statusEl = document.getElementById('status');
+const outputEl = document.getElementById('output');
+const copyBtn = document.getElementById('copy');
+const dlBtn = document.getElementById('download');
+const actions = document.getElementById('actions');
+const track = document.getElementById('track');
+const fill = document.getElementById('fill');
+const modelSel = document.getElementById('model');
+const langSel = document.getElementById('language');
 
 let transcriber = null;
+let loadedModel = null;
 
 fileInput.addEventListener('change', () => {
   goBtn.disabled = !fileInput.files.length;
-  statusEl.textContent = fileInput.files.length
-    ? 'Ready. Click Transcribe.'
-    : 'Waiting for file…';
+  statusEl.textContent = fileInput.files.length ? 'Ready. Click Transcribe.' : 'Waiting for file…';
 });
+
+function setProgress(p) {
+  track.style.display = 'block';
+  fill.style.width = (p * 100).toFixed(1) + '%';
+}
 
 async function decodeToMono16k(file) {
   statusEl.textContent = 'Decoding audio…';
-  const arrayBuffer = await file.arrayBuffer();
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-  // mix to mono
-  const numCh = audioBuffer.numberOfChannels;
-  const length = audioBuffer.length;
-  const mono = new Float32Array(length);
-  for (let c = 0; c < numCh; c++) {
-    const data = audioBuffer.getChannelData(c);
-    for (let i = 0; i < length; i++) mono[i] += data[i] / numCh;
+  const buf = await file.arrayBuffer();
+  const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+  const audio = await ctx.decodeAudioData(buf);
+  const ch = audio.numberOfChannels;
+  const len = audio.length;
+  const mono = new Float32Array(len);
+  for (let c = 0; c < ch; c++) {
+    const d = audio.getChannelData(c);
+    for (let i = 0; i < len; i++) mono[i] += d[i] / ch;
   }
-  // resample to 16kHz if needed
-  if (audioBuffer.sampleRate === 16000) return mono;
-  const ratio = 16000 / audioBuffer.sampleRate;
-  const newLen = Math.floor(length * ratio);
-  const out = new Float32Array(newLen);
-  for (let i = 0; i < newLen; i++) {
-    const src = i / ratio;
-    const i0 = Math.floor(src);
-    const i1 = Math.min(i0 + 1, length - 1);
-    const frac = src - i0;
-    out[i] = mono[i0] * (1 - frac) + mono[i1] * frac;
+  if (audio.sampleRate === 16000) return mono;
+  const ratio = 16000 / audio.sampleRate;
+  const out = new Float32Array(Math.floor(len * ratio));
+  for (let i = 0; i < out.length; i++) {
+    const s = i / ratio, i0 = Math.floor(s), i1 = Math.min(i0 + 1, len - 1);
+    out[i] = mono[i0] * (1 - (s - i0)) + mono[i1] * (s - i0);
   }
   return out;
 }
@@ -121,30 +212,44 @@ goBtn.addEventListener('click', async () => {
 
   goBtn.disabled = true;
   outputEl.textContent = '';
-  copyBtn.style.display = 'none';
+  actions.classList.add('hidden');
+  fill.style.width = '0%';
 
   try {
     const pcm = await decodeToMono16k(file);
-    const seconds = (pcm.length / 16000).toFixed(1);
-    statusEl.textContent = `Audio decoded (${seconds}s). Loading model…`;
+    const dur = pcm.length / 16000;
+    statusEl.textContent = `Decoded ${dur.toFixed(1)}s. Loading model…`;
+    setProgress(0.1);
 
-    if (!transcriber) {
-      transcriber = await pipeline(
-        'automatic-speech-recognition',
-        'Xenova/whisper-tiny'
-      );
+    const wanted = modelSel.value;
+    if (!transcriber || loadedModel !== wanted) {
+      transcriber = await pipeline('automatic-speech-recognition', wanted);
+      loadedModel = wanted;
     }
 
-    statusEl.textContent = 'Transcribing…';
-    const result = await transcriber(pcm, {
-      chunk_length_s: 30,
-      stride_length_s: 5,
-      return_timestamps: false
-    });
+    const chunkSamples = 16000 * 30; // 30-second chunks
+    const total = pcm.length;
+    const chunks = [];
+    for (let i = 0; i < total; i += chunkSamples) {
+      chunks.push(pcm.subarray(i, Math.min(i + chunkSamples, total)));
+    }
 
-    outputEl.textContent = result.text?.trim() || '(no speech detected)';
-    copyBtn.style.display = 'inline-block';
+    const lang = langSel.value;
+    const opts = { task: 'transcribe' };
+    if (lang !== 'auto') opts.language = lang;
+
+    let full = '';
+    for (let i = 0; i < chunks.length; i++) {
+      statusEl.textContent = `Transcribing chunk ${i + 1}/${chunks.length}…`;
+      setProgress(0.15 + (i / chunks.length) * 0.8);
+      const res = await transcriber(chunks[i], opts);
+      full += (res.text || '') + ' ';
+    }
+
+    outputEl.textContent = full.trim() || '(no speech detected)';
+    actions.classList.remove('hidden');
     statusEl.textContent = 'Done ✅';
+    setProgress(1);
   } catch (err) {
     console.error(err);
     statusEl.textContent = 'Error: ' + err.message;
@@ -156,9 +261,16 @@ goBtn.addEventListener('click', async () => {
 copyBtn.addEventListener('click', () => {
   navigator.clipboard.writeText(outputEl.textContent);
   copyBtn.textContent = 'Copied!';
-  setTimeout(() => copyBtn.textContent = 'Copy transcript', 1500);
+  setTimeout(() => copyBtn.textContent = 'Copy', 1500);
+});
+
+dlBtn.addEventListener('click', () => {
+  const blob = new Blob([outputEl.textContent], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'echoscript-transcript.txt';
+  a.click();
 });
 </script>
-
 </body>
 </html>
