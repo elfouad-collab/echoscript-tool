@@ -131,7 +131,7 @@ goBtn.addEventListener('click', async () => {
     if (!transcriber) {
       transcriber = await pipeline(
         'automatic-speech-recognition',
-        'Xenova/whisper-tiny.en'
+        'Xenova/whisper-tiny'
       );
     }
 
